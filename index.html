@@ -1,0 +1,223 @@
+<!doctype html><html lang="pt"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"></head><body>
+<title>Marcador de Ténis de Mesa</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Layout: ecrã único de telemóvel; dois painéis grandes (A e B) tocáveis, barra de sets em cima, ações em baixo. */
+:root{
+  --bg:#0f2036; --panel:#1b4f8a; --panel2:#163f6e; --ink:#ffffff; --muted:rgba(255,255,255,.7); --line:rgba(255,255,255,.18);
+  --ball:#f28c28; --ok:#4cc483; --card:#ffffff; --card-ink:#13233a; --card-muted:#5b6b82;
+  --body:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;
+  --num:"Arial Narrow","Roboto Condensed",system-ui,sans-serif;
+  color-scheme:dark;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+[hidden]{display:none!important}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;overscroll-behavior:none}
+.app{height:100%;display:flex;flex-direction:column;gap:8px;padding-block:8px 10px;padding-left:max(10px,env(safe-area-inset-left,0px));padding-right:max(10px,env(safe-area-inset-right,0px))}
+.top{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:13px;color:var(--muted)}
+.top b{color:var(--ink);font-size:14px}
+.mesa{margin-left:auto;background:var(--ball);color:#fff;font-weight:800;border-radius:6px;padding:2px 8px;font-size:14px}
+.sets{display:flex;gap:6px;align-items:center;flex-wrap:wrap;min-height:28px}
+.sets .s{font-family:var(--num);font-weight:700;font-size:15px;padding:3px 8px;border-radius:6px;background:rgba(255,255,255,.1);font-variant-numeric:tabular-nums}
+.sets .s.cur{background:var(--ball);color:#fff}
+.court{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:8px;min-height:0}
+@media (max-aspect-ratio:3/4){.court{grid-template-columns:1fr;grid-template-rows:1fr 1fr}}
+.side{position:relative;border:0;border-radius:16px;background:var(--panel);color:var(--ink);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:10px;cursor:pointer;touch-action:manipulation;overflow:hidden;min-height:0;font:inherit;text-align:center}
+.side::after{content:"";position:absolute;inset:0;border-radius:16px;box-shadow:inset 0 0 0 3px transparent;transition:box-shadow .15s}
+.side.serve::after{box-shadow:inset 0 0 0 4px var(--ball)}
+.side:active{filter:brightness(1.15)}
+.side .lt{position:absolute;top:8px;left:10px;font-weight:800;font-size:14px;width:24px;height:24px;border-radius:50%;background:rgba(255,255,255,.18);display:grid;place-items:center}
+.side .sw{position:absolute;top:8px;right:10px;font-size:13px;color:var(--muted)}
+.side .sw b{font-family:var(--num);font-size:20px;color:var(--ink)}
+.side .nm{font-weight:800;font-size:clamp(17px,4.6vw,26px);line-height:1.15;max-width:100%;overflow-wrap:anywhere}
+.side .id{font-size:12.5px;color:var(--muted)}
+.side .pts{font-family:var(--num);font-weight:800;font-size:clamp(84px,24vmin,200px);line-height:.95;font-variant-numeric:tabular-nums}
+.side .sv{font-size:12px;font-weight:700;color:var(--ball);letter-spacing:.06em;min-height:15px}
+.hint{text-align:center;font-weight:700;color:var(--ball);min-height:20px;font-size:14px}
+.bar{display:flex;gap:8px}
+.btn{flex:1;border:1px solid var(--line);background:rgba(255,255,255,.08);color:var(--ink);border-radius:12px;padding:12px 10px;font:inherit;font-weight:700;font-size:15px;cursor:pointer;touch-action:manipulation}
+.btn.pri{background:var(--ball);border-color:var(--ball);color:#fff}
+.btn.sm{flex:0 0 auto;padding:10px 14px}
+.btn:focus-visible,.side:focus-visible{outline:3px solid #fff;outline-offset:2px}
+.sheet{position:fixed;inset:0;background:rgba(5,12,22,.72);display:flex;align-items:flex-end;justify-content:center;z-index:10;padding:12px max(12px,env(safe-area-inset-right,0px)) calc(12px + env(safe-area-inset-bottom,0px)) max(12px,env(safe-area-inset-left,0px))}
+.card{background:var(--card);color:var(--card-ink);border-radius:16px;padding:16px;width:min(480px,100%);display:grid;gap:12px;max-height:100%;overflow:auto}
+.card h2{margin:0;font-size:20px}
+.card .muted{color:var(--card-muted);font-size:13.5px}
+.card .btn{background:#eef2f7;color:var(--card-ink);border-color:#d6dee9}
+.card .btn.pri{background:#1b4f8a;color:#fff;border-color:#1b4f8a}
+.card .btn.warn{background:#c2372f;color:#fff;border-color:#c2372f}
+.row{display:flex;gap:8px;flex-wrap:wrap}
+.code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:clamp(30px,10vw,44px);font-weight:800;letter-spacing:.04em;text-align:center;background:#fff4e6;border:2px dashed var(--ball);border-radius:12px;padding:10px;color:#13233a;user-select:all}
+.res{display:grid;grid-template-columns:auto 1fr auto;gap:4px 10px;font-size:15px}
+.res .w{font-weight:800}
+label.f{display:grid;gap:4px;font-size:13px;font-weight:600;color:var(--card-muted)}
+label.f input,label.f select{font:inherit;color:var(--card-ink);padding:9px 10px;border:1px solid #d6dee9;border-radius:8px;background:#f6f8fb}
+.end{flex:1;display:flex;flex-direction:column;justify-content:center;gap:14px;max-width:520px;margin:0 auto;width:100%}
+.end .card{width:100%}
+</style>
+
+<div class="app" id="app"></div>
+<div id="sheet"></div>
+<script>
+/* ===== Código de resultado e dados do QR (partilhado pela aplicação e pelo marcador) ===== */
+const CR = (() => {
+  const CHK = "CDEFGHJKLMNPQRSTUVWXYZ"; // sem A/B (lados) nem I/O
+  // set ganho por A com o adversário a 7 -> "A7"; 14-12 para B -> "B12"
+  function setTok(a, b) { return a > b ? "A" + b : "B" + a; }
+  function check(num, body) { const s = num + "|" + body; let x = 7; for (let i = 0; i < s.length; i++) x = (x * 31 + s.charCodeAt(i) * (i + 3)) % 9973; return CHK[x % CHK.length]; }
+  /* sets: [[a,b],...] ; wo: "a"|"b" (quem faltou) */
+  function encode(num, sets, wo) {
+    const body = wo ? "W" + wo.toUpperCase() : sets.map(([a, b]) => setTok(a, b)).join("");
+    return `${num}-${body}-${check(num, body)}`;
+  }
+  function decode(txt) {
+    const t = String(txt || "").toUpperCase().replace(/[^0-9A-Z]/g, "");
+    const m = t.match(/^(\d{1,4})((?:[AB]\d{1,2})+|W[AB])([C-HJ-NP-Z])$/);
+    if (!m) return { erro: "O código não tem o formato certo. Exemplo: 14-A7B9A3-K" };
+    const num = +m[1], body = m[2], chk = m[3];
+    if (check(num, body) !== chk) return { erro: "O código não confere. Verifica se foi escrito sem erros." };
+    if (body[0] === "W") return { num, wo: body[1].toLowerCase(), sets: [] };
+    const sets = [...body.matchAll(/([AB])(\d{1,2})/g)].map(([, w, l]) => { l = +l; const win = l <= 9 ? 11 : l + 2; return w === "A" ? [win, l] : [l, win]; });
+    return { num, sets, wo: null };
+  }
+  // dados do jogo dentro do link do QR (base64url de JSON)
+  function b64u(str) { const bytes = new TextEncoder().encode(str); let bin = ""; bytes.forEach(b => bin += String.fromCharCode(b)); return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, ""); }
+  function unb64u(s) { s = s.replace(/-/g, "+").replace(/_/g, "/"); while (s.length % 4) s += "="; const bin = atob(s); return new TextDecoder().decode(Uint8Array.from(bin, c => c.charCodeAt(0))); }
+  // formato compacto (QR mais pequeno): n|mesa|melhorDe|A|B|escalão|fase
+  const F = ["n", "m", "md", "a", "b", "e", "f"];
+  function pack(o) { return "k" + b64u(F.map(k => String(o[k] ?? "").replace(/\|/g, "/")).join("|")); }
+  function unpack(tok) {
+    try {
+      if (!tok) return null;
+      if (tok[0] === "j") return JSON.parse(unb64u(tok.slice(1)));
+      if (tok[0] !== "k") return null;
+      const v = unb64u(tok.slice(1)).split("|"), o = {}; F.forEach((k, i) => o[k] = v[i] || "");
+      o.n = +o.n || 0; o.md = +o.md || 3; return o;
+    } catch (e) { return null; }
+  }
+  return { encode, decode, pack, unpack };
+})();
+if (typeof module !== "undefined") module.exports = CR;
+
+/* ===== Marcador digital ===== */
+(() => {
+  const $ = s => document.querySelector(s);
+  const h = v => String(v ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+  const tok = (location.hash || "").slice(1);
+  let P = CR.unpack(tok);            // dados do jogo vindos do QR
+  const KEY = "marcador-tm:" + (tok || "manual");
+  let st = load() || { first: null, ev: [], wo: null, swap: false, manual: !P };
+  if (!P && st.p) P = st.p;
+  function load() { try { return JSON.parse(localStorage.getItem(KEY) || "null"); } catch (e) { return null; } }
+  function save() { try { localStorage.setItem(KEY, JSON.stringify(Object.assign({}, st, { p: st.manual ? P : undefined }))); } catch (e) {} }
+
+  /* Reconstrói o jogo a partir da lista de pontos */
+  function calc() {
+    const md = (P && +P.md) || 3, need = Math.ceil(md / 2);
+    const sets = []; let a = 0, b = 0, wa = 0, wb = 0, done = false;
+    for (const e of st.ev) {
+      if (done) break;
+      if (e === "a") a++; else b++;
+      if ((a >= 11 || b >= 11) && Math.abs(a - b) >= 2) {
+        sets.push([a, b]); if (a > b) wa++; else wb++; a = 0; b = 0;
+        if (wa === need || wb === need) done = true;
+      }
+    }
+    const si = sets.length;
+    const setFirst = st.first ? (si % 2 === 0 ? st.first : (st.first === "a" ? "b" : "a")) : null;
+    const pts = a + b, k = pts < 20 ? Math.floor(pts / 2) : 10 + (pts - 20);
+    const server = setFirst ? (k % 2 === 0 ? setFirst : (setFirst === "a" ? "b" : "a")) : null;
+    let hint = "";
+    if (!done) {
+      const gp = side => { const me = side === "a" ? a : b, op = side === "a" ? b : a; return me >= 10 && me - op >= 1; };
+      const wonSets = { a: wa, b: wb };
+      ["a", "b"].forEach(s => { if (gp(s)) hint = (wonSets[s] === need - 1 ? "Ponto de jogo" : "Ponto de set") + " para " + nome(s); });
+      if (a >= 10 && a === b) hint = "Empate a " + a + ": ganha quem fizer 2 pontos de vantagem";
+    }
+    return { md, need, sets, a, b, wa, wb, done, server, hint, setNo: si + 1 };
+  }
+  const nome = s => (P && (s === "a" ? P.a : P.b)) || (s === "a" ? "Jogador A" : "Jogador B");
+  const idt = s => (P && (s === "a" ? P.ai : P.bi)) || "";
+
+  function render() {
+    const app = $("#app");
+    if (!P) return renderManual();
+    const g = calc();
+    if (st.wo || g.done) return renderEnd(g);
+    if (!st.first) return renderFirst();
+    const top = `<div class="top"><span>${P.n ? `<b>Jogo n.º ${h(P.n)}</b> · ` : ""}${h(P.e || "")}${P.f ? " · " + h(P.f) : ""}</span>${P.m ? `<span class="mesa">Mesa ${h(P.m)}</span>` : ""}</div>`;
+    const setsBar = `<div class="sets">${g.sets.map(([x, y], i) => `<span class="s">S${i + 1} ${x}–${y}</span>`).join("")}<span class="s cur">Set ${g.setNo} de ${g.md}</span></div>`;
+    const side = s => `<button class="side ${g.server === s ? "serve" : ""}" data-pt="${s}" aria-label="Ponto para ${h(nome(s))}">
+      <span class="lt">${s.toUpperCase()}</span><span class="sw">Sets <b>${s === "a" ? g.wa : g.wb}</b></span>
+      <span class="nm">${h(nome(s))}</span><span class="id">${h(idt(s))}</span>
+      <span class="pts">${s === "a" ? g.a : g.b}</span><span class="sv">${g.server === s ? "● SERVE" : ""}</span></button>`;
+    const order = st.swap ? ["b", "a"] : ["a", "b"];
+    app.innerHTML = `${top}${setsBar}<div class="court">${side(order[0])}${side(order[1])}</div>
+      <div class="hint" aria-live="polite">${h(g.hint)}</div>
+      <div class="bar"><button class="btn" data-act="undo" ${st.ev.length ? "" : "disabled"}>↶ Anular último ponto</button><button class="btn sm" data-act="swap" aria-label="Trocar lados">⇄</button><button class="btn sm" data-act="menu" aria-label="Mais opções">⋯</button></div>`;
+  }
+  function renderFirst() {
+    $("#app").innerHTML = `<div class="end"><div class="card">
+      <div class="muted">${P.n ? `Jogo n.º ${h(P.n)} · ` : ""}${h(P.e || "")}${P.f ? " · " + h(P.f) : ""}${P.m ? " · Mesa " + h(P.m) : ""}</div>
+      <h2>${h(nome("a"))} <span class="muted">contra</span> ${h(nome("b"))}</h2>
+      <div class="muted">Jogo à melhor de ${(P && +P.md) || 3} sets, até 11 pontos. Quem serve primeiro?</div>
+      <div class="row"><button class="btn pri" data-first="a">${h(nome("a"))}</button><button class="btn pri" data-first="b">${h(nome("b"))}</button></div>
+      <button class="btn" data-act="woMenu">Falta de comparência</button></div></div>`;
+  }
+  function renderEnd(g) {
+    let win, body;
+    if (st.wo) { win = st.wo === "a" ? "b" : "a"; body = `<div class="muted">Falta de comparência de ${h(nome(st.wo))}.</div>`; }
+    else { win = g.wa > g.wb ? "a" : "b"; body = `<div class="res">${g.sets.map(([x, y], i) => `<span class="muted">Set ${i + 1}</span><span>${h(nome("a"))} – ${h(nome("b"))}</span><span class="w">${x}–${y}</span>`).join("")}</div>`; }
+    const code = CR.encode(P.n || 0, g.sets, st.wo);
+    $("#app").innerHTML = `<div class="end"><div class="card">
+      <div class="muted">${P.n ? `Jogo n.º ${h(P.n)} · ` : ""}${h(P.e || "")}${P.f ? " · " + h(P.f) : ""}${P.m ? " · Mesa " + h(P.m) : ""}</div>
+      <h2>Vitória de ${h(nome(win))}${st.wo ? "" : ` (${Math.max(g.wa, g.wb)}–${Math.min(g.wa, g.wb)})`}</h2>${body}
+      <div class="muted">Mostra este código ao professor, que o escreve na aplicação do torneio:</div>
+      <div class="code" id="code">${h(code)}</div>
+      ${P.n ? "" : `<div class="muted">Este jogo não tem número. O professor tem de registar o resultado à mão.</div>`}
+      <div class="row"><button class="btn" data-act="undo">↶ Corrigir o último ponto</button><button class="btn" data-act="menu">Mais opções</button></div>
+    </div></div>`;
+  }
+  function renderManual() {
+    $("#app").innerHTML = `<div class="end"><form class="card" id="fm">
+      <h2>Marcador de Ténis de Mesa</h2>
+      <div class="muted">Normalmente abre-se lendo o código QR do boletim ou da aplicação do torneio. Também podes preencher os dados à mão.</div>
+      <label class="f">Jogador A<input id="ma" required autocomplete="off"></label>
+      <label class="f">Jogador B<input id="mb" required autocomplete="off"></label>
+      <div class="row"><label class="f" style="flex:1">Jogo n.º<input id="mn" inputmode="numeric" autocomplete="off"></label>
+      <label class="f" style="flex:1">Melhor de<select id="mmd"><option value="3">3 sets</option><option value="5">5 sets</option></select></label></div>
+      <button class="btn pri" type="submit">Começar</button></form></div>`;
+    $("#fm").onsubmit = ev => { ev.preventDefault(); P = { a: $("#ma").value.trim() || "Jogador A", b: $("#mb").value.trim() || "Jogador B", n: +$("#mn").value || 0, md: +$("#mmd").value }; st = { first: null, ev: [], wo: null, swap: false, manual: true }; save(); render(); };
+  }
+  function sheet(html) { $("#sheet").innerHTML = html ? `<div class="sheet" data-close="1"><div class="card">${html}</div></div>` : ""; }
+  function menu() {
+    sheet(`<h2>Opções</h2>
+      <button class="btn" data-act="woMenu">Falta de comparência</button>
+      <button class="btn" data-act="restart">Recomeçar o jogo do zero</button>
+      <button class="btn" data-act="closeSheet">Fechar</button>`);
+  }
+  document.addEventListener("click", ev => {
+    if (ev.target.dataset && ev.target.dataset.close) { sheet(""); return; }
+    const pt = ev.target.closest("[data-pt]"); if (pt) { st.ev.push(pt.dataset.pt); save(); buzz(); render(); return; }
+    const f = ev.target.closest("[data-first]"); if (f) { st.first = f.dataset.first; save(); render(); return; }
+    const b = ev.target.closest("[data-act]"); if (!b) return;
+    const a = b.dataset.act;
+    if (a === "undo") { if (st.wo) st.wo = null; else st.ev.pop(); save(); render(); }
+    else if (a === "swap") { st.swap = !st.swap; save(); render(); }
+    else if (a === "menu") menu();
+    else if (a === "closeSheet") sheet("");
+    else if (a === "woMenu") sheet(`<h2>Falta de comparência</h2><div class="muted">Quem faltou? O outro jogador ganha o jogo.</div>
+      <button class="btn warn" data-wo="a">Faltou ${h(nome("a"))}</button><button class="btn warn" data-wo="b">Faltou ${h(nome("b"))}</button><button class="btn" data-act="closeSheet">Cancelar</button>`);
+    else if (a === "restart") sheet(`<h2>Recomeçar o jogo?</h2><div class="muted">Todos os pontos marcados são apagados.</div>
+      <button class="btn warn" data-act="restartOk">Sim, recomeçar</button><button class="btn" data-act="closeSheet">Cancelar</button>`);
+    else if (a === "restartOk") { st = { first: null, ev: [], wo: null, swap: false, manual: st.manual }; save(); sheet(""); render(); }
+  });
+  document.addEventListener("click", ev => { const w = ev.target.closest("[data-wo]"); if (w) { st.wo = w.dataset.wo; save(); sheet(""); render(); } });
+  function buzz() { try { navigator.vibrate && navigator.vibrate(25); } catch (e) {} }
+  try { navigator.wakeLock && navigator.wakeLock.request("screen").catch(() => {}); } catch (e) {}
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") try { navigator.wakeLock && navigator.wakeLock.request("screen").catch(() => {}); } catch (e) {} });
+  render();
+})();
+</script>
+</body></html>
