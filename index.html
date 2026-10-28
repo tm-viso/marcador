@@ -33,6 +33,15 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font
 .side .nm{font-weight:800;font-size:clamp(17px,4.6vw,26px);line-height:1.15;max-width:100%;overflow-wrap:anywhere}
 .side .id{font-size:12.5px;color:var(--muted)}
 .side .pts{font-family:var(--num);font-weight:800;font-size:clamp(84px,24vmin,200px);line-height:.95;font-variant-numeric:tabular-nums}
+.col{display:flex;flex-direction:column;gap:6px;min-height:0}
+.col .side{flex:1}
+.servetag{min-height:44px;border-radius:12px;display:flex;align-items:center;gap:10px;padding:6px 14px;font-size:clamp(16px,4.4vw,22px);color:#fff}
+.servetag.on{background:var(--ball);box-shadow:0 2px 0 rgba(0,0,0,.25)}
+.servetag .sn{margin-left:auto;font-size:14px;opacity:.95}
+.servetag .dots{display:flex;gap:5px}
+.servetag .dots i{width:11px;height:11px;border-radius:50%;border:2px solid #fff;display:block}
+.servetag .dots i.on{background:#fff}
+@media (max-aspect-ratio:3/4){.servetag{min-height:36px;font-size:16px}.servetag:not(.on){display:none}}
 .servebar{display:flex;align-items:center;gap:10px;background:var(--ball);color:#fff;border-radius:12px;padding:8px 14px;font-size:clamp(16px,4.4vw,22px);flex-wrap:wrap}
 .servebar b{font-weight:800}
 .servebar .sn{margin-left:auto;font-size:13px;opacity:.9}
@@ -695,14 +704,21 @@ const BOL = (() => {
     const side = s => `<button class="side ${g.server === s ? "serve" : ""}" data-pt="${s}" aria-label="Ponto para ${h(nome(s))}">
       <span class="lt">${s.toUpperCase()}</span><span class="sw">Sets <b>${s === "a" ? g.wa : g.wb}</b></span>
       <span class="nm">${h(nome(s))}</span><span class="id">${h(idt(s))}</span>
-      <span class="pts">${s === "a" ? g.a : g.b}</span><span class="sv">${g.server === s ? '<span class="ball" aria-hidden="true"></span> SERVE' : ""}</span></button>`;
-    const order = st.swap ? ["b", "a"] : ["a", "b"];
+      <span class="pts">${s === "a" ? g.a : g.b}</span></button>`;
+    // os jogadores trocam de lado da mesa em cada set e, no set decisivo, quando alguém chega aos 5 pontos
+    const decisivo = g.setNo === g.md, meio = decisivo && Math.max(g.a, g.b) >= 5;
+    const troca = !!st.swap !== (((g.setNo - 1) % 2 === 1) !== meio);
+    const order = troca ? ["b", "a"] : ["a", "b"];
     const pts = g.a + g.b, deuce = g.a >= 10 && g.b >= 10;
-    const nServ = deuce ? "troca a cada ponto" : ((pts % 2) === 0 ? "1.º de 2 serviços" : "2.º de 2 serviços");
-    const banner = g.server ? `<div class="servebar" aria-live="polite"><span class="ball" aria-hidden="true"></span><span>Serviço: <b>${h(nome(g.server))}</b></span><span class="sn">${nServ}</span></div>` : "";
-    app.innerHTML = `${top}${setsBar}${banner}<div class="court">${side(order[0])}${side(order[1])}</div>
-      <div class="hint" aria-live="polite">${h(g.hint)}</div>
-      <div class="bar"><button class="btn" data-act="undo" ${st.ev.length ? "" : "disabled"}>↶ Anular último ponto</button><button class="btn sm" data-act="swap" aria-label="Trocar lados">⇄</button><button class="btn sm" data-act="menu" aria-label="Mais opções">⋯</button></div>`;
+    const nServ = deuce ? "1 serviço cada" : ((pts % 2) === 0 ? "1.º serviço" : "2.º serviço");
+    const dots = deuce ? "" : `<span class="dots" aria-hidden="true"><i class="on"></i><i class="${pts % 2 ? "on" : ""}"></i></span>`;
+    const tag = s => `<div class="servetag ${g.server === s ? "on" : ""}" ${g.server === s ? 'aria-live="polite"' : 'aria-hidden="true"'}>${g.server === s ? `<span class="ball" aria-hidden="true"></span><b>Serviço</b><span class="sn">${nServ}</span>${dots}` : ""}</div>`;
+    let aviso = g.hint;
+    if (!aviso && pts === 0 && g.setNo > 1) aviso = `Set ${g.setNo}: os jogadores trocam de lado da mesa`;
+    if (!aviso && meio && Math.max(g.a, g.b) === 5 && Math.min(g.a, g.b) < 5) aviso = "Set decisivo: trocam de lado aos 5 pontos";
+    app.innerHTML = `${top}${setsBar}<div class="court">${order.map(s => `<div class="col">${tag(s)}${side(s)}</div>`).join("")}</div>
+      <div class="hint" aria-live="polite">${h(aviso)}</div>
+      <div class="bar"><button class="btn" data-act="undo" ${st.ev.length ? "" : "disabled"}>↶ Anular último ponto</button><button class="btn sm" data-act="swap" aria-label="Trocar lados no ecrã" title="Se o ecrã não corresponder à mesa, troca os lados">⇄</button><button class="btn sm" data-act="menu" aria-label="Mais opções">⋯</button></div>`;
   }
   function renderFirst() {
     const sel = st.first;
