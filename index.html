@@ -72,6 +72,27 @@ body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font
 .res .w{font-weight:800}
 label.f{display:grid;gap:4px;font-size:13px;font-weight:600;color:var(--card-muted)}
 label.f input,label.f select{font:inherit;color:var(--card-ink);padding:9px 10px;border:1px solid #d6dee9;border-radius:8px;background:#f6f8fb}
+.arbchip{border:1px solid var(--line);background:rgba(255,255,255,.08);color:var(--muted);border-radius:999px;padding:3px 10px;font:inherit;font-size:13px;cursor:pointer;max-width:60vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.arbchip b{color:var(--ink)}
+.side .who{display:flex;flex-direction:column;align-items:center;min-width:0;max-width:100%}
+/* Telemóvel deitado: nome e resultado na mesma linha — nome A · pontos A | pontos B · nome B */
+@media (orientation:landscape) and (max-height:560px){
+  .app{gap:5px;padding-block:5px 6px}
+  .top{flex-wrap:nowrap;font-size:12px}.top>span:first-child{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+  .sets{min-height:22px}.sets .s{font-size:13px;padding:2px 7px}
+  .court{gap:6px}
+  .col{gap:4px}
+  .servetag{min-height:30px;padding:3px 12px;font-size:15px}
+  .side{flex-direction:row;justify-content:space-between;gap:10px;padding:26px 14px 8px}
+  .side.R{flex-direction:row-reverse}
+  .side .who{flex:1 1 0;align-items:flex-start;text-align:left}
+  .side.R .who{align-items:flex-end;text-align:right}
+  .side .nm{font-size:clamp(14px,2.5vw,21px);overflow-wrap:break-word;hyphens:auto}
+  .side .id{font-size:11.5px}
+  .side .pts{flex:none;font-size:clamp(64px,40vh,170px)}
+  .hint{min-height:0;font-size:13px}.hint:empty{display:none}
+  .btn{padding:8px 10px;font-size:14px}
+}
 .end{flex:1;display:flex;flex-direction:column;justify-content:center;gap:14px;max-width:520px;margin:0 auto;width:100%}
 .end .card{width:100%}
 </style>
@@ -503,7 +524,7 @@ const CR = (() => {
   function b64u(str) { const bytes = new TextEncoder().encode(str); let bin = ""; bytes.forEach(b => bin += String.fromCharCode(b)); return btoa(bin).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, ""); }
   function unb64u(s) { s = s.replace(/-/g, "+").replace(/_/g, "/"); while (s.length % 4) s += "="; const bin = atob(s); return new TextDecoder().decode(Uint8Array.from(bin, c => c.charCodeAt(0))); }
   // formato compacto (QR mais pequeno): n|mesa|melhorDe|A|B|escalão|fase
-  const F = ["n", "m", "md", "a", "b", "e", "f"];
+  const F = ["n", "m", "md", "a", "b", "e", "f", "r"];
   function pack(o) { return "k" + b64u(F.map(k => String(o[k] ?? "").replace(/\|/g, "/")).join("|")); }
   function unpack(tok) {
     try {
@@ -619,7 +640,7 @@ const BOL = (() => {
     doc.text("Sets A", fx, footerY); fx += doc.getTextWidth("Sets A") + 1; blankLine(5, sa); doc.text("–", fx + 0.4, footerY); fx += 2; blankLine(5, sb); doc.text("B", fx + 0.8, footerY); fx += 5;
     const rest = ix + iw - fx, half = rest / 2;
     doc.text("Vencedor", fx, footerY); let lw = doc.getTextWidth("Vencedor") + 1; fx += lw; blankLine(half - lw - 3, R ? ((R.venc === "a" ? d.a : d.b) || {}).nome : ""); fx += 3;
-    doc.text("Árbitro", fx, footerY); lw = doc.getTextWidth("Árbitro") + 1; fx += lw; blankLine(ix + iw - fx, R ? R.arbitro : "");
+    doc.text("Árbitro", fx, footerY); lw = doc.getTextWidth("Árbitro") + 1; fx += lw; blankLine(ix + iw - fx, R ? R.arbitro : (d.arbPrev || ""));
     if (QM) {
       const qx = x + W - P - qS, qy = y + 1.6, ms = qS / QM.length;
       doc.setFillColor(255, 255, 255); doc.rect(qx - 0.8, qy - 0.8, qS + 1.6, qS + 1.6, "F");
@@ -659,7 +680,7 @@ const BOL = (() => {
   const KEY = "marcador-tm:" + (tok || "manual");
   const ARB = "marcador-tm:arbitro";
   const arbGuardado = () => { try { return localStorage.getItem(ARB) || ""; } catch (e) { return ""; } };
-  let st = load() || { first: null, ev: [], wo: null, swap: false, manual: !P, started: false, arb: arbGuardado() };
+  let st = load() || { first: null, ev: [], wo: null, swap: false, manual: !P, started: false, arb: (P && P.r) || arbGuardado() };
   if (st.first && st.started === undefined) st.started = true;
   if (!P && st.p) P = st.p;
   function load() { try { return JSON.parse(localStorage.getItem(KEY) || "null"); } catch (e) { return null; } }
@@ -699,11 +720,11 @@ const BOL = (() => {
     const g = calc();
     if (st.wo || g.done) return renderEnd(g);
     if (!st.started) return renderFirst();
-    const top = `<div class="top"><span>${P.n ? `<b>Jogo n.º ${h(P.n)}</b> · ` : ""}${h(P.e || "")}${P.f ? " · " + h(P.f) : ""}</span>${P.m ? `<span class="mesa">Mesa ${h(P.m)}</span>` : ""}</div>`;
+    const top = `<div class="top"><span>${P.n ? `<b>Jogo n.º ${h(P.n)}</b> · ` : ""}${h(P.e || "")}${P.f ? " · " + h(P.f) : ""}</span><button type="button" class="arbchip" data-act="arbMenu" title="Mudar o árbitro">Árbitro: <b>${h(st.arb || "—")}</b> ✎</button>${P.m ? `<span class="mesa">Mesa ${h(P.m)}</span>` : ""}</div>`;
     const setsBar = `<div class="sets">${g.sets.map(([x, y], i) => `<span class="s">S${i + 1} ${x}–${y}</span>`).join("")}<span class="s cur">Set ${g.setNo} de ${g.md}</span></div>`;
-    const side = s => `<button class="side ${g.server === s ? "serve" : ""}" data-pt="${s}" aria-label="Ponto para ${h(nome(s))}">
+    const side = (s, k) => `<button class="side ${k ? "R" : "L"} ${g.server === s ? "serve" : ""}" data-pt="${s}" aria-label="Ponto para ${h(nome(s))}">
       <span class="lt">${s.toUpperCase()}</span><span class="sw">Sets <b>${s === "a" ? g.wa : g.wb}</b></span>
-      <span class="nm">${h(nome(s))}</span><span class="id">${h(idt(s))}</span>
+      <span class="who"><span class="nm">${h(nome(s))}</span><span class="id">${h(idt(s))}</span></span>
       <span class="pts">${s === "a" ? g.a : g.b}</span></button>`;
     // os jogadores trocam de lado da mesa em cada set e, no set decisivo, quando alguém chega aos 5 pontos
     const decisivo = g.setNo === g.md, meio = decisivo && Math.max(g.a, g.b) >= 5;
@@ -716,7 +737,7 @@ const BOL = (() => {
     let aviso = g.hint;
     if (!aviso && pts === 0 && g.setNo > 1) aviso = `Set ${g.setNo}: os jogadores trocam de lado da mesa`;
     if (!aviso && meio && Math.max(g.a, g.b) === 5 && Math.min(g.a, g.b) < 5) aviso = "Set decisivo: trocam de lado aos 5 pontos";
-    app.innerHTML = `${top}${setsBar}<div class="court">${order.map(s => `<div class="col">${tag(s)}${side(s)}</div>`).join("")}</div>
+    app.innerHTML = `${top}${setsBar}<div class="court">${order.map((s, k) => `<div class="col">${tag(s)}${side(s, k)}</div>`).join("")}</div>
       <div class="hint" aria-live="polite">${h(aviso)}</div>
       <div class="bar"><button class="btn" data-act="undo" ${st.ev.length ? "" : "disabled"}>↶ Anular último ponto</button><button class="btn sm" data-act="swap" aria-label="Trocar lados no ecrã" title="Se o ecrã não corresponder à mesa, troca os lados">⇄</button><button class="btn sm" data-act="menu" aria-label="Mais opções">⋯</button></div>`;
   }
@@ -726,7 +747,7 @@ const BOL = (() => {
       <div class="muted">${P.n ? `Jogo n.º ${h(P.n)} · ` : ""}${h(P.e || "")}${P.f ? " · " + h(P.f) : ""}${P.m ? " · Mesa " + h(P.m) : ""}</div>
       <h2>${h(nome("a"))} <span class="muted">contra</span> ${h(nome("b"))}</h2>
       <div class="muted">Jogo à melhor de ${(P && +P.md) || 3} sets, até 11 pontos.</div>
-      <label class="f">Árbitro<input id="arb" value="${h(st.arb || "")}" placeholder="O teu nome" autocomplete="name" required></label>
+      <label class="f">Árbitro${P.r ? ` <span style="font-weight:400">(atribuído no sorteio${(st.arb || "").trim() && st.arb.trim() !== P.r ? `: ${h(P.r)}` : ""} · podes alterar)</span>` : ""}<input id="arb" value="${h(st.arb || "")}" placeholder="Nome do árbitro" autocomplete="name" required></label>
       <div class="f" style="display:grid;gap:6px"><span style="font-size:13px;font-weight:600;color:var(--card-muted)">Quem serve primeiro?</span>
         <div class="row">${["a", "b"].map(sd => `<button type="button" class="btn pick ${sel === sd ? "on" : ""}" data-first="${sd}" aria-pressed="${sel === sd}">${sel === sd ? "● " : ""}${h(nome(sd))}</button>`).join("")}</div></div>
       <button class="btn pri big" type="submit" ${sel ? "" : "disabled"}>Iniciar jogo</button>
@@ -771,6 +792,7 @@ const BOL = (() => {
   function sheet(html) { $("#sheet").innerHTML = html ? `<div class="sheet" data-close="1"><div class="card">${html}</div></div>` : ""; }
   function menu() {
     sheet(`<h2>Opções</h2>
+      <button class="btn" data-act="arbMenu">Mudar o árbitro</button>
       <button class="btn" data-act="woMenu">Falta de comparência</button>
       <button class="btn" data-act="restart">Recomeçar o jogo do zero</button>
       <button class="btn" data-act="closeSheet">Fechar</button>`);
@@ -785,6 +807,14 @@ const BOL = (() => {
     else if (a === "swap") { st.swap = !st.swap; save(); render(); }
     else if (a === "menu") menu();
     else if (a === "closeSheet") sheet("");
+    else if (a === "arbMenu") {
+      sheet(`<h2>Árbitro</h2>${P.r ? `<div class="muted">Atribuído no sorteio: <b style="color:var(--card-ink)">${h(P.r)}</b></div>` : ""}
+        <label class="f">Nome do árbitro<input id="arbN" value="${h(st.arb || "")}" placeholder="Nome do árbitro" autocomplete="name"></label>
+        <div class="row">${P.r && st.arb !== P.r ? `<button class="btn" data-act="arbSorteio">Repor ${h(P.r)}</button>` : ""}<button class="btn pri" data-act="arbOk">Guardar</button></div>
+        <button class="btn" data-act="closeSheet">Cancelar</button>`);
+      const i = $("#arbN"); if (i) { i.focus(); i.select(); i.onkeydown = e => { if (e.key === "Enter") { e.preventDefault(); $("[data-act=arbOk]").click(); } }; }
+    }
+    else if (a === "arbOk" || a === "arbSorteio") { const v = a === "arbSorteio" ? P.r : ($("#arbN").value || "").trim(); if (!v) { $("#arbN").focus(); return; } st.arb = v; save(); sheet(""); render(); }
     else if (a === "woMenu") sheet(`<h2>Falta de comparência</h2><div class="muted">Quem faltou? O outro jogador ganha o jogo.</div>
       <button class="btn warn" data-wo="a">Faltou ${h(nome("a"))}</button><button class="btn warn" data-wo="b">Faltou ${h(nome("b"))}</button><button class="btn" data-act="closeSheet">Cancelar</button>`);
     else if (a === "restart") sheet(`<h2>Recomeçar o jogo?</h2><div class="muted">Todos os pontos marcados são apagados.</div>
